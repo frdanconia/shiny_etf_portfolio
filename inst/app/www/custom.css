@@ -1,0 +1,81 @@
+/* background color of the navbar */
+.navbar{ background: white;}
+
+/*Change the color of the link + put hand on hover */
+.nav-link , .navbar-brand{ color: #000000; cursor: pointer;}
+
+/* Margin of the links in the nav */
+.nav-link{ margin-right: 1em !important;}
+
+/* background color on hover of the nav links */
+.nav-link:hover{ background: #f4f4f4; color: #f97300; }
+
+/* background color of the navbar */
+.navbar-collapse{ justify-content: flex-end;}
+
+/* background color of the navbar */
+.navbar-toggler{  background:#fff !important;}
+
+.navbar {
+  /*border-top: 2px solid black; */
+  border-bottom: 2px solid black;
+  padding-top : 2em;
+  padding-left : 5em;
+  padding-right : 5em;
+}
+
+.row{
+  margin-top:2em;
+}
+
+.container {
+  margin-right: 6em;
+  margin-left: 6em; 
+}
+
+.btn {
+    border: 1px solid #ced4da;
+}
+
+blockquote {
+  font-size: 0.75em;
+}
+
+body {
+  font-family: "Source Sans Pro", Calibri, Candara, Arial, sans-serif;
+  font-size: 15px;
+}
+
+.selectize-input, .selectize-dropdown { 
+  font-size: 10px;
+}
+
+.input-sm {
+ font-size: 9px; 
+}
+
+.irs-bar, .irs-bar-edge, .irs-single, .irs-grid-pol, .js-irs-0 .irs-to,.js-irs-0 .irs-from {
+  background: black;
+  border-color: black;
+}
+
+h5 {
+  color: black;
+  background-color: transparent;
+  border-color: black;
+  margin-left: 15px;
+}
+
+a:hover {
+  color: black;
+}
+
+div.info-box {
+  color: black;
+  background-color: #e6e6e6;
+}
+
+div.small-box.bg-aqua {
+  color: black;
+  background-color: #e6e6e6;
+}

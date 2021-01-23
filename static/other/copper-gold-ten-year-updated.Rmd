@@ -1,0 +1,120 @@
+
+
+
+library(tidyquant)
+library(tidyverse)
+library(timetk)
+library(highcharter)
+library(Quandl)
+
+Quandl.api_key("d9EidiiDWoFESfdk5nPy")
+
+
+datasets <- c("CHRIS/CME_HG1", "CHRIS/CME_GC1", "FRED/DGS10.1")
+
+commodities <- 
+  datasets %>%
+    tq_get(get          = "quandl",
+           from         = "2000-01-01",
+           collapse     = "daily") 
+
+head(commodities)
+
+
+commodities  %>% 
+  select(symbol, date, settle, value)
+
+commodities %>%  
+  select(symbol, date, settle, value) %>% 
+  mutate(data = case_when(value > 0 ~ value,
+                          settle > 0 ~ settle)) %>% 
+  select(symbol, date, data) %>% 
+  head()
+
+commodities %>% 
+  select(symbol, date, settle, value) %>% 
+  mutate(data = case_when(value > 0 ~ value,
+                          settle > 0 ~ settle)) %>% 
+  select(symbol, date, data) %>% 
+  spread(symbol, data) %>% 
+  `colnames<-`(c("date","gold", "copper", "ten_year")) %>% 
+  head()
+
+commodities_df <-
+  commodities %>% 
+  select(symbol, date, settle, value) %>% 
+  mutate(data = case_when(value > 0 ~ value,
+                          settle > 0 ~ settle)) %>% 
+  select(symbol, date, data) %>% 
+  spread(symbol, data) %>% 
+  `colnames<-`(c("date","gold", "copper", "ten_year")) %>% 
+  mutate(cpr_gold_ratio = (copper*100)/gold) 
+
+head(commodities_df)
+
+commodities_xts <- 
+  commodities_df %>% 
+  tk_xts(date_var = date)
+
+  highchart(type = "stock") %>%
+  hc_subtitle(text = "Ratio") %>%
+  hc_subtitle(text = "Copper-Gold and 10-year yields") %>%
+  hc_tooltip(crosshairs = TRUE, backgroundColor = c("#F8F8FF"),
+             shared = TRUE, borderWidth = 1) %>%
+  hc_yAxis_multiples(
+    list(
+      title = list(text = "copper-gold ratio"),
+      align = "left",
+      labels = list(format = "{value}$"),
+      showFirstLabel = FALSE,
+      showLastLabel = FALSE, opposite = FALSE),
+    list(
+      title = list(text = "10-year rates"),
+      align = "right",
+      labels = list(format = "{value}%"),
+      showFirstLabel = FALSE, opposite = TRUE,
+      showLastLabel = FALSE)) %>%
+  hc_add_series(commodities_xts$cpr_gold_ratio, name = "copper-gold ratio", yAxis = 0) %>% 
+  hc_add_series(commodities_xts$ten_year, name = "10-year", type = "spline", yAxis = 1) %>% 
+  hc_exporting(enabled = TRUE) %>% 
+  hc_navigator(enabled = TRUE) %>% 
+  hc_scrollbar(enabled = FALSE) %>% 
+  hc_legend(enabled = TRUE)
+
+commodities_2017_18 <- 
+  commodities_df %>% 
+  filter(date >= "2017-01-01") %>% 
+  tk_xts(date_var = date)
+
+highchart(type = "stock") %>%
+  hc_subtitle(text = "Ratio") %>%
+  hc_subtitle(text = "Copper-Gold and 10-year yields") %>%
+  hc_tooltip(crosshairs = TRUE, backgroundColor = c("#F8F8FF"),
+             shared = TRUE, borderWidth = 1) %>%
+  hc_yAxis_multiples(
+    list(
+      title = list(text = "copper-gold ratio"),
+      align = "left",
+      labels = list(format = "{value}$"),
+      showFirstLabel = FALSE,
+      showLastLabel = FALSE, opposite = FALSE),
+    list(
+      title = list(text = "10-year rates"),
+      align = "right",
+      labels = list(format = "{value}%"),
+      showFirstLabel = FALSE, opposite = TRUE,
+      showLastLabel = FALSE)) %>%
+  hc_add_series(commodities_2017_18$cpr_gold_ratio, name = "copper-gold ratio", yAxis = 0) %>% 
+  hc_add_series(commodities_2017_18$ten_year, name = "10-year", type = "spline", yAxis = 1) %>% 
+  hc_exporting(enabled = TRUE) %>% 
+  hc_navigator(enabled = TRUE) %>% 
+  hc_scrollbar(enabled = FALSE) %>% 
+  hc_legend(enabled = TRUE)
+
+commodities_df %>% 
+  gather(asset, price, -date) %>% 
+  ggplot(aes(x = date, y = price, color = asset)) +
+  geom_line() + 
+  facet_wrap(~asset, scales = "free")
+
+

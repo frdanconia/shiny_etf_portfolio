@@ -1,0 +1,34 @@
+Package: shinyETF
+Title: ShinyETF
+Version: 0.0.0.9000
+Description: This Package builds your personalized ETF Portfolio.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    shiny,
+    golem,
+    arrow,
+    attempt,
+    data.table,
+    dplyr,
+    ggplot2,
+    glue,
+    gt,
+    highcharter,
+    htmltools,
+    plotly,
+    processx,
+    purrr,
+    quantmod,
+    stringr,
+    tidyquant,
+    tidyr,
+    tibble,
+    magrittr,
+    timetk,
+    vroom,
+    pkgload,
+    markdown,
+    shinydashboard
+RoxygenNote: 6.1.1

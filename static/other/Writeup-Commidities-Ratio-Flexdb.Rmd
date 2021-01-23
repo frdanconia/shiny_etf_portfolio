@@ -1,0 +1,185 @@
+---
+title: "Commidities Econ Flexdb"
+---
+
+In a [previous post](https://rviews.rstudio.com/2017/04/12/copper-gold-and-ten-year-treasury-notes/), we created an R Notebook to explore the relationship between the copper/gold price ratio and 10-year Treasury yields. Today, we'll create a Shiny app that lets the user choose among a choice of ratios and see how they correlate with a variety of other indicators. For example, perhaps a user doesn't care about Dr. Copper, but instead wants to explore the oil/gold price ratio and how it correlates with the US inflation rate, or the EU inflation rate. 
+
+The finished app is available [here](http://colorado.rstudio.com:3939/commodities-ratio-quandl/).
+
+
+
+
+```{r, eval = FALSE}
+# We are choosing a few commodities and  
+# Remember this is a commodities flexdashboard. 
+
+commodityChoices <- c(
+                  "Copper" = "CHRIS/CME_HG1",
+                  "WTI oil" = "FRED/DCOILWTICO",# 
+                  "Iron Ore" = "ODA/PIORECR_USD", # monthly
+                  "Platinum" = "LPPM/PLAT", 
+                  "Palladium" = "LPPM/PALL",
+                  "Silver" = "LBMA/SILVER") 
+
+selectInput("commodity",
+            "Commodity",
+            choices = commodityChoices, 
+            selected = "Copper")
+```
+
+
+Now let's give the users a choice of the economic indicator correlation to test/visualize.
+
+```{r, eval = FALSE}
+# Let's choose a few economic indicators. There are others, like 
+# unemployment, consumer confidence, home building, retail spending.
+econIndicatorChoices <- c(
+                  "10-Yr Yield" = "FRED/DGS10", # daily
+                  "US CPI" = "RATEINF/INFLATION_USA",# monthly
+                  "Japan CPI" = "RATEINF/INFLATION_JPN",
+                  "EU CPI" = "RATEINF/INFLATION_EUR") 
+
+selectInput("econIndicator",
+            "Economic Indicator",
+            choices = econIndicatorChoices, 
+            selected = "10-yr Yield")
+ 
+
+dateRangeInput("dateRange",
+               "Date range",
+               start = "1990-01-01",
+               end   = "2016-12-31")
+```
+
+Now that we have the inputs, we need to import the data for the chosen commodity, gold and the chosen economic indicator. Then, we create ratio of commodity/gold prices and save it in an object with the economic indicator time series. 
+
+```{r, eval = FALSE}
+ratio_indicator <- reactive({
+
+# We have to pass the start and end dates to Quandl three times, 
+# so let's save them in nicer object. 
+start_date <- format(input$dateRange[1])
+end_date <- format(input$dateRange[2])
+
+# First let's import the price data for the commodity chosen by the user.    
+commodity <- Quandl(input$commodity,
+               start_date = start_date,
+               end_date = end_date,
+               order = "asc",
+               type = "xts")
+
+# And we are not giving the user a choice for the denominator. It is 
+# gold prices. We could offer up a choice if we think there's another
+# safe-haven asset that could lead to better or more interesting
+# insights. But for today it's  gold, Jerry, gold. 
+
+gold <- Quandl("CHRIS/CME_GC1",
+               start_date = start_date,
+               end_date = end_date, 
+               order = "asc",
+               type = "xts")
+
+# Now let's import the price data for the econimic indicator chosen by the user.
+
+econIndicator <- Quandl(input$econIndicator,
+               start_date = start_date,
+               end_date = end_date,
+               order = "asc",
+               type = "xts")
+
+```
+
+Okay, we have our base data now: thet time series for the commodity, the time series for gold, and the time series for the economic indicator. Now we need to calcuate the price ratio of commodity/gold. 
+
+First we will merge the data with `merge.xts()` and replace NAs as we did in the original Notebook. We will use the `na.locf()` function for this. 
+
+```{r, eval = FALSE}
+
+# Merge the time series that we just imported from Quandl. 
+data_merged <- na.locf(merge.xts(commodity[,1], gold$Settle, econIndicator), formLast = TRUE)
+# Add better column names.
+colnames(data_merged ) <- c(names(commodityChoices[commodityChoices == input$commodity]), 
+                            "Gold",
+                            names(econIndicatorChoices[econIndicatorChoices == input$econIndicator]))
+```
+
+Now we need to create a ratio - this is why we had to replace those NAs - as a new column in the xts object.  It's not necessary but just for clarity we can go ahead and save just the ratio and the economic indicator time series.  
+
+```{r, eval = FALSE}
+# Create the ratio in a new column
+data_merged$ratio <- (data_merged[,1])/data_merged$Gold
+
+# Save just the ratio and the gold time series.
+
+ratio_indicator  <- merge(data_merged$ratio, data_merged[,3])
+
+colnames(ratio_indicator) <- c("ratio","indicator")
+
+# Return our finished xts object.
+return(ratio_indicator)
+})
+
+```
+
+We now have a reactive called `ratio_indicator()`
+    
+### Chart 1
+    
+```{r, eval = FALSE}
+dygraphOutput("ratio_indicator")
+
+output$ratio_indicator <- renderDygraph({
+  dygraph(ratio_indicator()) %>% 
+  # Add the rollPeriod for smoothing.
+  dyRoller(rollPeriod = 3) %>% 
+  # Create two independent axes.
+  dyAxis("y", label = "USD") %>%
+  dyAxis("y2", label = "Percent (%)", independentTicks = TRUE) %>%
+  # Assign each time series to an axis.
+  dySeries("ratio", axis = 'y', 
+           label = paste(names(commodityChoices[commodityChoices == input$commodity]), 
+                         "/Gold (LHS)", sep = ""), color = "blue") %>% 
+  dySeries("indicator", axis = 'y2', 
+           label = paste(names(econIndicatorChoices[econIndicatorChoices == input$econIndicator]), 
+                         "(RHS)", sep = ""), color = "red")
+})
+
+```
+
+Row
+-------------------------
+
+### Chart 2
+
+```{r}
+dygraphOutput("rollingCorrelation")
+
+output$rollingCorrelation <- renderDygraph({
+  
+rolling_cor <- rollapply(ratio_indicator(), 24,
+                         function(x) cor(x[, 1], x[, 2], use = "pairwise.complete.obs"),
+                         by.column = FALSE)
+
+names(rolling_cor) <- paste(names(commodityChoices[commodityChoices == input$commodity]),
+                            "/Gold ",
+                            names(econIndicatorChoices[econIndicatorChoices == input$econIndicator]), 
+                            " Correlation", sep = "")
+
+  avg <- round(mean(rolling_cor,  na.rm = T), 2)
+  mini <- round(min(rolling_cor,  na.rm = T), 2)
+ 
+  maxi <- round(max(rolling_cor,  na.rm = T), 2)
+  
+
+dygraph(rolling_cor, main = paste(names(commodityChoices[commodityChoices == input$commodity]),
+                            "/Gold ",
+                            names(econIndicatorChoices[econIndicatorChoices == input$econIndicator]), 
+                            " Correlation", sep = "")) %>% 
+  dyRangeSelector(dateWindow = c("2015-01-01", "2016-12-31"))  %>% 
+  dyLimit(avg, color = 'purple') %>% 
+  dyLimit(mini, color = 'red') %>% 
+  dyLimit(maxi, color = 'blue') %>% 
+  dyEvent("2016-11-08", "Trump!", labelLoc = "bottom")
+})
+```
+
